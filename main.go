@@ -9,8 +9,17 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
+	"sync"
 )
+
+// CommitResult stores the result for each file
+type CommitResult struct {
+	filename string
+	message  string
+	err      error
+}
 
 var helpMessages = map[string]string{
 	"api-key": "Your API key (required). The default model is gpt-4o-mini and hence we need to provide an OPEN AI API KEY",
@@ -86,7 +95,9 @@ func main() {
 		// ask the user if they want to commit the message
 		fmt.Println("Commit Message:", commitMessage)
 		if confirmAction("Do you want to commit the message?") {
-			commit(commitMessage)
+			if err := commit(commitMessage); err != nil {
+				log.Fatal(err)
+			}
 		} else {
 			fmt.Println("Sure, I'll not commit the message")
 		}
@@ -99,16 +110,16 @@ func main() {
 		}
 
 		if len(files) == 0 {
-			log.Fatal("No staged files found")
+			// ask if they want to stage all files
+			if confirmAction("No staged files found. Do you want to stage all files?") {
+				stageAllFiles()
+			} else {
+				log.Fatal("Error: No staged files found")
+			}
 		}
 
-		for _, file := range files {
-			commitMessage, err := generateCommitMessageForFile(file)
-			if err != nil {
-				log.Fatal(err)
-			}
-
-			log.Printf("Commit Message: %s\n", commitMessage)
+		if err := handleRecursiveMode(files); err != nil {
+			log.Fatal(err)
 		}
 	}
 }
@@ -176,7 +187,85 @@ func stageFile(filePath string) error {
 	return nil
 }
 
+func stageAllFiles() error {
+	if err := exec.Command("git", "add", ".").Run(); err != nil {
+		return fmt.Errorf("failed to stage all files: %w", err)
+	}
+	return nil
+}
+
 // feature: commit the generated commit message
-func commit(commitMessage string) {
-	exec.Command("git", "commit", "-m", commitMessage).Run()
+func commit(commitMessage string) error {
+	if err := exec.Command("git", "commit", "-m", commitMessage).Run(); err != nil {
+		return fmt.Errorf("failed to commit: %w", err)
+	}
+	return nil
+}
+
+func handleRecursiveMode(files []string) error {
+	var wg sync.WaitGroup
+	results := make([]CommitResult, len(files))
+
+	// Process each file concurrently
+	for i, file := range files {
+		wg.Add(1)
+		go func(index int, filepath string) {
+			defer wg.Done()
+			message, err := generateCommitMessageForFile(filepath)
+			results[index] = CommitResult{
+				filename: filepath,
+				message:  message,
+				err:      err,
+			}
+		}(i, file)
+	}
+
+	// Wait for all goroutines to complete
+	wg.Wait()
+
+	// Display results with numbers
+	for i, result := range results {
+		if result.err != nil {
+			fmt.Printf("%d. %s: Error - %v\n", i+1, result.filename, result.err)
+			continue
+		}
+		fmt.Printf("%d. %s: %s\n", i+1, result.filename, result.message)
+	}
+
+	// Get user selection
+	fmt.Println("\nEnter the numbers of commits you want to keep (comma-separated, e.g., '1,2,3'):")
+	var input string
+	fmt.Scanln(&input)
+
+	// Process selected commits
+	selectedIndices := parseSelection(input)
+	for _, idx := range selectedIndices {
+		if idx-1 < 0 || idx-1 >= len(results) {
+			continue
+		}
+		result := results[idx-1]
+		if result.err != nil {
+			continue
+		}
+		if err := commit(result.message); err != nil {
+			fmt.Printf("Failed to commit %s: %v\n", result.filename, err)
+		} else {
+			fmt.Printf("Successfully committed %s\n", result.filename)
+		}
+	}
+
+	return nil
+}
+
+func parseSelection(input string) []int {
+	parts := strings.Split(strings.TrimSpace(input), ",")
+	var numbers []int
+	for _, part := range parts {
+		num, err := strconv.Atoi(strings.TrimSpace(part))
+		if err != nil {
+			continue
+		}
+		numbers = append(numbers, num)
+	}
+	return numbers
 }

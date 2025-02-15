@@ -21,3 +21,5 @@ go run . --r
 ```
 
 Pheww, learnt a lot of GoLang with this haha
+
+Recursive mode now works. Hooray
