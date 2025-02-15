@@ -74,7 +74,16 @@ func main() {
 			log.Fatal("Error: Failed to generate commit message")
 		}
 
+		// ask the user if they want to commit the message
 		fmt.Println("Commit Message:", commitMessage)
+		fmt.Println("Do you want to commit the message? (y/n)")
+		var input string
+		fmt.Scanln(&input)
+		if input == "y" {
+			commit(commitMessage)
+		} else {
+			fmt.Println("Sure, I'll not commit the message")
+		}
 	}
 
 	if *recursive {
@@ -156,4 +165,9 @@ func isStaged(filePath string) bool {
 
 func stageFile(filePath string) {
 	exec.Command("git", "add", filePath).Run()
+}
+
+// feature: commit the generated commit message
+func commit(commitMessage string) {
+	exec.Command("git", "commit", "-m", commitMessage).Run()
 }
