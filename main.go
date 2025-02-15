@@ -49,7 +49,6 @@ func main() {
 
 	if stagedFile != "" && !*recursive {
 		diff, err := getDiffOfStagedFile(stagedFile)
-		fmt.Println("Diff:", diff)
 		if err != nil {
 			log.Fatal("Error: Failed to get diff of staged file")
 		}
