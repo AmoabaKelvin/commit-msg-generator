@@ -31,36 +31,32 @@ func main() {
 	}
 
 	if !isGitRepo() {
-		fmt.Println("Error: Current directory is not a git repository")
-		os.Exit(1)
+		log.Fatal("Error: Current directory is not a git repository")
 	}
 
 	_, err := getGitRoot()
 
 	if err != nil {
-		fmt.Println("Error: Failed to get git root")
-		os.Exit(1)
+		log.Fatal(err)
 	}
 
 	// todo: handle recursive mode later
 
 	stagedFile := flag.Arg(0)
 	if stagedFile == "" && !*recursive {
-		fmt.Println("Error: No file provided and recursive flag is not set")
-		os.Exit(1)
+		log.Fatal("Error: No file provided and recursive flag is not set")
 	}
 
 	if stagedFile != "" && !*recursive {
 		diff, err := getDiffOfStagedFile(stagedFile)
+		fmt.Println("Diff:", diff)
 		if err != nil {
-			fmt.Println("Error: Failed to get diff of staged file")
-			os.Exit(1)
+			log.Fatal("Error: Failed to get diff of staged file")
 		}
 
 		commitMessage, err := GenerateCommitMessage(diff)
 		if err != nil {
-			fmt.Println("Error: Failed to generate commit message")
-			os.Exit(1)
+			log.Fatal("Error: Failed to generate commit message")
 		}
 
 		fmt.Println("Commit Message:", commitMessage)
@@ -69,8 +65,7 @@ func main() {
 	if *recursive {
 		files, err := getAllStagedFiles()
 		if err != nil {
-			fmt.Println("Error: Failed to get all staged files")
-			os.Exit(1)
+			log.Fatal("Error: Failed to get all staged files")
 		}
 
 		if len(files) == 0 {
