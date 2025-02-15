@@ -3,6 +3,7 @@
 package main
 
 import (
+	"bufio"
 	"flag"
 	"fmt"
 	"log"
@@ -15,6 +16,17 @@ var helpMessages = map[string]string{
 	"api-key": "Your API key (required). The default model is gpt-4o-mini and hence we need to provide an OPEN AI API KEY",
 	"model":   "The model to use (e.g., davinci, gpt-3.5-turbo)",
 	"r":       "Recursively process directories",
+}
+
+func confirmAction(prompt string) bool {
+	reader := bufio.NewReader(os.Stdin)
+	fmt.Printf("%s (y/n): ", prompt)
+	input, err := reader.ReadString('\n')
+	if err != nil {
+		return false
+	}
+	input = strings.ToLower(strings.TrimSpace(input))
+	return input == "y" || input == "yes"
 }
 
 func main() {
@@ -55,10 +67,7 @@ func main() {
 			// log.Fatal("Error: File is not staged")
 
 			// ask the user if they want to stage the file
-			fmt.Println("File is not staged. Do you want to stage it? (y/n)")
-			var input string
-			fmt.Scanln(&input)
-			if input == "y" {
+			if confirmAction("File is not staged. Do you want to stage it?") {
 				stageFile(workingFile)
 			} else {
 				log.Fatal("Error: File is not staged")
@@ -76,10 +85,7 @@ func main() {
 
 		// ask the user if they want to commit the message
 		fmt.Println("Commit Message:", commitMessage)
-		fmt.Println("Do you want to commit the message? (y/n)")
-		var input string
-		fmt.Scanln(&input)
-		if input == "y" {
+		if confirmAction("Do you want to commit the message?") {
 			commit(commitMessage)
 		} else {
 			fmt.Println("Sure, I'll not commit the message")
