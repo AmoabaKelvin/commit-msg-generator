@@ -42,13 +42,29 @@ func main() {
 
 	// todo: handle recursive mode later
 
-	stagedFile := flag.Arg(0)
-	if stagedFile == "" && !*recursive {
+	workingFile := flag.Arg(0)
+	if workingFile == "" && !*recursive {
 		log.Fatal("Error: No file provided and recursive flag is not set")
 	}
 
-	if stagedFile != "" && !*recursive {
-		diff, err := getDiffOfStagedFile(stagedFile)
+	if workingFile != "" && !*recursive {
+		// check if the file is Staged
+		staged := isStaged(workingFile)
+
+		if !staged {
+			// log.Fatal("Error: File is not staged")
+
+			// ask the user if they want to stage the file
+			fmt.Println("File is not staged. Do you want to stage it? (y/n)")
+			var input string
+			fmt.Scanln(&input)
+			if input == "y" {
+				stageFile(workingFile)
+			} else {
+				log.Fatal("Error: File is not staged")
+			}
+		}
+		diff, err := getDiffOfStagedFile(workingFile)
 		if err != nil {
 			log.Fatal("Error: Failed to get diff of staged file")
 		}
@@ -128,4 +144,16 @@ func generateCommitMessageForFile(filePath string) (string, error) {
 		return "", err
 	}
 	return commitMessage, nil
+}
+
+func isStaged(filePath string) bool {
+	output, err := exec.Command("git", "diff", "--cached", "--name-only", filePath).Output()
+	if err != nil {
+		return false
+	}
+	return strings.Contains(string(output), filePath)
+}
+
+func stageFile(filePath string) {
+	exec.Command("git", "add", filePath).Run()
 }
