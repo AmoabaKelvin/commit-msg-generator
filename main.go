@@ -169,8 +169,11 @@ func isStaged(filePath string) bool {
 	return strings.Contains(string(output), filePath)
 }
 
-func stageFile(filePath string) {
-	exec.Command("git", "add", filePath).Run()
+func stageFile(filePath string) error {
+	if err := exec.Command("git", "add", filePath).Run(); err != nil {
+		return fmt.Errorf("failed to stage file %s: %w", filePath, err)
+	}
+	return nil
 }
 
 // feature: commit the generated commit message
